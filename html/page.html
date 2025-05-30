@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simple Stylish Whiteboard with Tailwind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Bounce animation */
+      @keyframes bounceY {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+      .bounce-y {
+        animation: bounceY 2s ease-in-out infinite;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-indigo-50 flex flex-col items-center p-6 min-h-screen select-none"
+  >
+    <h1 class="text-indigo-700 text-4xl font-bold mb-6 bounce-y">
+      📝 Simple Stylish Whiteboard
+    </h1>
+
+    <canvas
+      id="board"
+      width="700"
+      height="400"
+      class="border-4 border-indigo-700 rounded-xl bg-white shadow-lg cursor-crosshair"
+    ></canvas>
+
+    <div id="controls" class="mt-6 flex flex-wrap gap-4 justify-center">
+      <label class="flex items-center gap-2 text-indigo-700 font-semibold">
+        Color:
+        <input
+          type="color"
+          id="colorPicker"
+          value="#4f46e5"
+          class="w-10 h-10 border-2 border-indigo-700 rounded"
+        />
+      </label>
+
+      <label class="flex items-center gap-2 text-indigo-700 font-semibold">
+        Size:
+        <input
+          type="range"
+          id="penSize"
+          min="1"
+          max="20"
+          value="4"
+          class="w-32"
+        />
+      </label>
+
+      <button
+        id="undoBtn"
+        disabled
+        class="bg-indigo-700 text-white px-5 py-2 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed hover:scale-105 transition-transform duration-300 ease-in-out"
+      >
+        ↩️ Undo
+      </button>
+
+      <button
+        id="clearBtn"
+        class="bg-indigo-700 text-white px-5 py-2 rounded-lg hover:scale-105 transition-transform duration-300 ease-in-out"
+      >
+        🧼 Clear
+      </button>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("board");
+      const ctx = canvas.getContext("2d");
+      const colorPicker = document.getElementById("colorPicker");
+      const penSize = document.getElementById("penSize");
+      const undoBtn = document.getElementById("undoBtn");
+      const clearBtn = document.getElementById("clearBtn");
+
+      let drawing = false;
+      let currentStroke = null;
+      let penColor = colorPicker.value;
+      let penWidth = penSize.value;
+      let undoStack = [];
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        };
+      }
+
+      function startStroke(pos) {
+        drawing = true;
+        currentStroke = {
+          points: [pos],
+          color: penColor,
+          width: penWidth,
+        };
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      }
+
+      function continueStroke(pos) {
+        if (!drawing) return;
+        currentStroke.points.push(pos);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.strokeStyle = currentStroke.color;
+        ctx.lineWidth = currentStroke.width;
+        ctx.lineCap = "round";
+        ctx.stroke();
+      }
+
+      function endStroke() {
+        if (!drawing) return;
+        drawing = false;
+        ctx.closePath();
+        if (currentStroke.points.length > 1) {
+          undoStack.push(currentStroke);
+          undoBtn.disabled = false;
+        }
+        currentStroke = null;
+      }
+
+      function redrawAll() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const stroke of undoStack) {
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+          ctx.strokeStyle = stroke.color;
+          ctx.lineWidth = stroke.width;
+          ctx.lineCap = "round";
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+          }
+          ctx.stroke();
+          ctx.closePath();
+        }
+      }
+
+      undoBtn.addEventListener("click", () => {
+        undoStack.pop();
+        redrawAll();
+        if (undoStack.length === 0) {
+          undoBtn.disabled = true;
+        }
+      });
+
+      clearBtn.addEventListener("click", () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        undoStack = [];
+        undoBtn.disabled = true;
+      });
+
+      colorPicker.addEventListener("input", () => {
+        penColor = colorPicker.value;
+      });
+
+      penSize.addEventListener("input", () => {
+        penWidth = penSize.value;
+      });
+
+      canvas.addEventListener("mousedown", (e) => startStroke(getPos(e)));
+      canvas.addEventListener("mousemove", (e) => continueStroke(getPos(e)));
+      canvas.addEventListener("mouseup", endStroke);
+      canvas.addEventListener("mouseleave", endStroke);
+    </script>
+  </body>
+</html>
